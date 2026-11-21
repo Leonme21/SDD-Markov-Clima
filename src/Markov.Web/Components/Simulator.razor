@@ -1,3 +1,4 @@
+@inject Markov.Web.PredictionClient Api
 <header><div class="brand">◒ &nbsp; Laboratorio de Markov</div><h1>El clima, día a día.</h1>
 <p>Explora cómo las probabilidades de hoy cambian el clima esperado durante los próximos diez días.</p></header>
 <div class="layout">
@@ -24,7 +25,7 @@
 @if(error != null){<p class="error" role="alert">@error</p>}
 </section>
 <section><h2>Probabilidad por día</h2>
-@if(error == null)
+@if(error == null && points.Count > 0)
 {
     <div class="legend">@for(int i=0;i<3;i++){<span><i class="@($"tone-{i}")"></i>@Names[i]</span>}</div>
     <div class="plot" role="img" aria-label="Probabilidades agrupadas por día, escala de 0 a 100 %. Valores en la tabla.">
@@ -40,7 +41,7 @@
     @foreach(var point in points){<tr><th scope="row">@point.Day</th>@foreach(var probability in point.Probabilities){<td>@Pct(probability*100)</td>}</tr>}
     </tbody></table>
 }
-else { <p>Corrige la matriz para calcular las probabilidades.</p> }
+else { <p>@(error == null ? "Calculando…" : "Resultados pendientes.")</p> }
 </section></div>
 <aside><h2>Cómo leer el modelo</h2><p><strong>vₙ = v₀ Pⁿ.</strong> Partimos del estado elegido y multiplicamos su vector por la matriz una vez por día. Con la matriz de ejemplo, si hoy llueve, mañana hay un 20 % de probabilidad de sol, un 30 % de nubes y un 50 % de lluvia. Los datos son didácticos.</p></aside>
 
@@ -48,7 +49,8 @@ else { <p>Corrige la matriz para calcular las probabilidades.</p> }
     private static readonly string[] Names = ["Soleado", "Nublado", "Lluvioso"];
     private static readonly CultureInfo Spanish = CultureInfo.GetCultureInfo("es-CO");
     private readonly string[,] cells = new string[3,3];
-    private IReadOnlyList<Forecast> points = [];
+    private IReadOnlyList<DayPrediction> points = [];
+    private int revision;
     private int initial;
     private bool interactive;
     protected override void OnAfterRender(bool firstRender)
@@ -60,44 +62,59 @@ else { <p>Corrige la matriz para calcular las probabilidades.</p> }
         }
     }
     private string? error;
-    protected override void OnInitialized() => Reset();
+    protected override Task OnInitializedAsync() => Reset();
 
     private static string Pct(decimal value) => value.ToString("F2", Spanish) + " %";
-    private void Reset()
+    private async Task Reset()
     {
-        var example = WeatherChain.Example();
+        int version = ++revision;
+        PredictionRequest example;
+        try { example = await Api.ExampleAsync(); }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            if (version == revision) error = "La API no está disponible. Intenta restaurar el ejemplo.";
+            return;
+        }
+        if (version != revision) return;
         for (int r = 0; r < 3; r++)
             for (int c = 0; c < 3; c++)
-                cells[r,c] = example[r,c].ToString(Spanish);
-        initial = 2;
-        Calculate();
+                cells[r,c] = example.Matrix![r][c].ToString(Spanish);
+        initial = example.InitialState!.Value;
+        await Calculate();
     }
 
-    private void Edit(int row, int column, string? text)
+    private async Task Edit(int row, int column, string? text)
     {
         cells[row,column] = text ?? "";
-        Calculate();
+        await Calculate();
     }
 
-    private void Calculate()
+    private async Task Calculate()
     {
-        var matrix = new decimal[3,3];
+        int version = ++revision;
+        decimal[][] matrix = [new decimal[3], new decimal[3], new decimal[3]];
         points = [];
         for (int r = 0; r < 3; r++)
             for (int c = 0; c < 3; c++)
-                if (!decimal.TryParse(cells[r,c].Trim().Replace(',', '.'), NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out matrix[r,c]))
+                if (!decimal.TryParse(cells[r,c].Trim().Replace(',', '.'), NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out matrix[r][c]))
                 {
                     error = $"Fila {r+1} ({Names[r]}): introduce un porcentaje en la columna {Names[c]}.";
                     return;
                 }
         try
         {
-            points = WeatherChain.Predict(matrix, initial);
+            var result = await Api.PredictAsync(new(matrix, initial));
+            if (version != revision) return;
+            points = result;
             error = null;
         }
         catch (ArgumentException exception)
         {
-            error = exception.Message;
+            if (version == revision) error = exception.Message;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            if (version == revision) error = "La API no está disponible. Vuelve a intentarlo.";
         }
     }
 }

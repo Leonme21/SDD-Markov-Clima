@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Markov.Core\Markov.Core.csproj" />
+    <ProjectReference Include="..\Markov.Contracts\Markov.Contracts.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
