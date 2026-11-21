@@ -4,7 +4,7 @@
 <div class="layout">
 <section><h2>Modelo de transición</h2>
 <label for="initial">Estado inicial</label>
-<select disabled="@(!interactive)" id="initial" @bind="initial" @bind:after="Calculate">
+<select disabled="@(!interactive || !modelLoaded)" id="initial" @bind="initial" @bind:after="Calculate">
 @for (int i = 0; i < Names.Length; i++){ <option value="@i">@Names[i]</option> }
 </select>
 <h3>Matriz de transición</h3><p>Cada fila representa hoy y cada columna, mañana. Introduce porcentajes que sumen 100 por fila.</p>
@@ -16,7 +16,7 @@
     @for(int col=0; col<3; col++)
     {
         int c=col;
-        <td><input disabled="@(!interactive)" aria-label="@($"{Names[r]} a {Names[c]}")" inputmode="decimal" value="@cells[r,c]" @oninput="e => Edit(r,c,e.Value?.ToString())" /></td>
+        <td><input disabled="@(!interactive || !modelLoaded)" aria-label="@($"{Names[r]} a {Names[c]}")" inputmode="decimal" value="@cells[r,c]" @oninput="e => Edit(r,c,e.Value?.ToString())" /></td>
     }
     </tr>
 }
@@ -48,7 +48,8 @@ else { <p>@(error == null ? "Calculando…" : "Resultados pendientes.")</p> }
 @code {
     private static readonly string[] Names = ["Soleado", "Nublado", "Lluvioso"];
     private static readonly CultureInfo Spanish = CultureInfo.GetCultureInfo("es-CO");
-    private readonly string[,] cells = new string[3,3];
+    private readonly string?[,] cells = new string?[3,3];
+    private bool modelLoaded;
     private IReadOnlyList<DayPrediction> points = [];
     private int revision;
     private int initial;
@@ -79,6 +80,7 @@ else { <p>@(error == null ? "Calculando…" : "Resultados pendientes.")</p> }
         for (int r = 0; r < 3; r++)
             for (int c = 0; c < 3; c++)
                 cells[r,c] = example.Matrix![r][c].ToString(Spanish);
+        modelLoaded = true;
         initial = example.InitialState!.Value;
         await Calculate();
     }
@@ -96,7 +98,7 @@ else { <p>@(error == null ? "Calculando…" : "Resultados pendientes.")</p> }
         points = [];
         for (int r = 0; r < 3; r++)
             for (int c = 0; c < 3; c++)
-                if (!decimal.TryParse(cells[r,c].Trim().Replace(',', '.'), NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out matrix[r][c]))
+                if (!decimal.TryParse(cells[r,c]?.Trim().Replace(',', '.'), NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out matrix[r][c]))
                 {
                     error = $"Fila {r+1} ({Names[r]}): introduce un porcentaje en la columna {Names[c]}.";
                     return;

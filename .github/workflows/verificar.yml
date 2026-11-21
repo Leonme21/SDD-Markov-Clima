@@ -32,3 +32,4 @@ jobs:
           trap 'kill "$server" "$api" || true' EXIT
           curl -fsS --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:5057/ -o /dev/null
           npm run test:web
+          MARKOV_BUILD=Release node --test tests/web/api-startup.test.mjs
