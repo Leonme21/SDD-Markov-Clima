@@ -1,0 +1,30 @@
+name: Verificar modelo y simulador
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run spec
+      - run: dotnet build Clima.sln -c Release
+      - run: dotnet test Clima.sln -c Release --no-build
+      - run: npx playwright-core install --with-deps chromium --only-shell
+      - name: Pruebas de navegador
+        shell: bash
+        run: |
+          dotnet run --project src/Markov.Web -c Release --no-build --no-launch-profile --urls http://127.0.0.1:5057 > "$RUNNER_TEMP/clima.log" 2>&1 &
+          server=$!
+          trap 'kill "$server" || true' EXIT
+          curl -fsS --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:5057/ -o /dev/null
+          npm run test:web
