@@ -1,0 +1,4 @@
+schema: spec-driven
+context: |
+  Aplicación académica en español. Blazor y .NET 8. Cada paso representa un día.
+  Especificar cada capacidad y sus escenarios antes de implementarla.
