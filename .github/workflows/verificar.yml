@@ -23,8 +23,12 @@ jobs:
       - name: Pruebas de navegador
         shell: bash
         run: |
+          dotnet run --project src/Markov.Api -c Release --no-build --no-launch-profile --urls http://127.0.0.1:5058 &
+          api=$!
+          curl -fsS --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:5058/api/modelo/ejemplo -o /dev/null
+          node --test tests/api/*.test.mjs
           dotnet run --project src/Markov.Web -c Release --no-build --no-launch-profile --urls http://127.0.0.1:5057 > "$RUNNER_TEMP/clima.log" 2>&1 &
           server=$!
-          trap 'kill "$server" || true' EXIT
+          trap 'kill "$server" "$api" || true' EXIT
           curl -fsS --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:5057/ -o /dev/null
           npm run test:web
