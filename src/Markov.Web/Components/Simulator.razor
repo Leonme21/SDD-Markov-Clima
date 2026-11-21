@@ -3,7 +3,7 @@
 <div class="layout">
 <section><h2>Modelo de transición</h2>
 <label for="initial">Estado inicial</label>
-<select id="initial" @bind="initial" @bind:after="Calculate">
+<select disabled="@(!interactive)" id="initial" @bind="initial" @bind:after="Calculate">
 @for (int i = 0; i < Names.Length; i++){ <option value="@i">@Names[i]</option> }
 </select>
 <h3>Matriz de transición</h3><p>Cada fila representa hoy y cada columna, mañana. Introduce porcentajes que sumen 100 por fila.</p>
@@ -15,12 +15,12 @@
     @for(int col=0; col<3; col++)
     {
         int c=col;
-        <td><input aria-label="@($"{Names[r]} a {Names[c]}")" inputmode="decimal" value="@cells[r,c]" @oninput="e => Edit(r,c,e.Value?.ToString())" /></td>
+        <td><input disabled="@(!interactive)" aria-label="@($"{Names[r]} a {Names[c]}")" inputmode="decimal" value="@cells[r,c]" @oninput="e => Edit(r,c,e.Value?.ToString())" /></td>
     }
     </tr>
 }
 </tbody></table>
-<button @onclick="Reset">Restaurar ejemplo</button>
+<button disabled="@(!interactive)" @onclick="Reset">Restaurar ejemplo</button>
 @if(error != null){<p class="error" role="alert">@error</p>}
 </section>
 <section><h2>Probabilidad por día</h2>
@@ -50,6 +50,15 @@ else { <p>Corrige la matriz para calcular las probabilidades.</p> }
     private readonly string[,] cells = new string[3,3];
     private IReadOnlyList<Forecast> points = [];
     private int initial;
+    private bool interactive;
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            interactive = true;
+            StateHasChanged();
+        }
+    }
     private string? error;
     protected override void OnInitialized() => Reset();
 
