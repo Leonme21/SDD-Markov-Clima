@@ -1,0 +1,13 @@
+@host = http://localhost:5058
+
+GET {{host}}/api/modelo/ejemplo
+
+###
+
+POST {{host}}/api/predicciones
+Content-Type: application/json
+
+{
+  "initialState": 2,
+  "matrix": [[70,20,10],[30,40,30],[20,30,50]]
+}

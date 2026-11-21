@@ -6,7 +6,13 @@ Simulador web en español de una cadena de Markov para el clima. Selecciona el e
 
 ## Ejecutar la aplicación
 
-Requiere el SDK de .NET 8. Desde la raíz del repositorio:
+Requiere el SDK de .NET 8. Desde la raíz del repositorio, inicia la API en una terminal:
+
+```bash
+dotnet run --project src/Markov.Api --no-launch-profile --urls http://127.0.0.1:5058
+```
+
+En una segunda terminal, inicia Blazor:
 
 ```bash
 dotnet run --project src/Markov.Web --no-launch-profile --urls http://localhost:5057
@@ -35,7 +41,17 @@ Se divide cada celda entre 100 para obtener la matriz **P**. La distribución in
 
 ## Arquitectura y trazabilidad
 
-[Markov.Core](src/Markov.Core/WeatherChain.cs) valida la matriz y calcula el vector para cada día. [Markov.Web](src/Markov.Web/Components/Simulator.razor) utiliza Blazor Interactive Server para actualizar la tabla y las barras desde el mismo resultado. Los datos viven en la sesión del simulador. La aplicación funciona sin una base de datos ni servicios meteorológicos.
+| Proyecto | Responsabilidad |
+|---|---|
+| [Markov.Core](src/Markov.Core) | Dominio puro. Valida probabilidades y calcula las distribuciones, sin dependencias de HTTP o Blazor. |
+| [Markov.Application](src/Markov.Application) | Caso de uso que transforma el contrato de entrada, invoca el dominio y proyecta el resultado. |
+| [Markov.Contracts](src/Markov.Contracts) | DTO de petición y de respuesta independientes del servidor. |
+| [Markov.Api](src/Markov.Api) | Adaptador REST en ASP.NET Core. Inyección de dependencias y traducción de errores a HTTP. |
+| [Markov.Web](src/Markov.Web) | Cliente Blazor. Usa un cliente HTTP tipado y comparte únicamente los contratos con el backend. |
+
+### Probar la API directamente
+
+Abre [Markov.Api.http](src/Markov.Api/Markov.Api.http) en Visual Studio o copia sus peticiones en Postman. Primero consulta `GET /api/modelo/ejemplo` y envía su respuesta como JSON a `POST /api/predicciones`. El campo `initialState` usa 0 para soleado, 1 para nublado y 2 para lluvioso. La entrada usa porcentajes de 0 a 100; la respuesta contiene probabilidades entre 0 y 1. Para lluvia, el primer objeto es `{"day":1,"probabilities":[0.2,0.3,0.5]}`. Una matriz inválida devuelve 400 con ProblemDetails. La API procesa cada solicitud sin almacenar datos. Para conectar Blazor a otra instancia configura `MarkovApi__BaseUrl`.
 
 | Requisito | Evidencia automatizada |
 |---|---|
@@ -45,6 +61,7 @@ Se divide cada celda entre 100 para obtener la matriz **P**. La distribución in
 | [WEB-01 · Edición y restauración](openspec/specs/simulador/spec.md) | [Cambio de estado, restauración y edición de matriz](tests/web/simulador.test.mjs) |
 | [WEB-02 · Errores](openspec/specs/simulador/spec.md) | [Fila inválida y celda vacía, retirada de resultados y recuperación](tests/web/simulador.test.mjs) |
 | [WEB-03 · Gráfica y tabla](openspec/specs/simulador/spec.md) | [Cuatro grupos y doce barras cotejadas con los porcentajes de la tabla](tests/web/simulador.test.mjs) |
+| [API-01 a API-03 · Predicción, validación y ejemplo](openspec/specs/api/spec.md) | [Contrato HTTP con ambos casos de éxito y errores](tests/api/predicciones.test.mjs) |
 
 ## OpenSpec, SDD y participación de IA
 
@@ -64,6 +81,6 @@ npm run spec
 npx playwright-core install chromium --only-shell
 ```
 
-Para las pruebas de navegador, deja la aplicación en ejecución en el puerto 5057 y, en otra terminal, ejecuta `npm run test:web`. En Linux, si faltan dependencias del sistema, usa `npx playwright-core install --with-deps chromium --only-shell`. Puedes ajustar `MARKOV_URL` para probar otra instancia y `CHROMIUM_PATH` para usar un ejecutable de Chromium instalado.
+Con la API en el puerto 5058 ejecuta `node --test tests/api/predicciones.test.mjs`. Para las pruebas de navegador, deja también la aplicación en ejecución en el puerto 5057 y, en otra terminal, ejecuta `npm run test:web`. En Linux, si faltan dependencias del sistema, usa `npx playwright-core install --with-deps chromium --only-shell`. Puedes ajustar `MARKOV_URL` para probar otra instancia y `CHROMIUM_PATH` para usar un ejecutable de Chromium instalado.
 
-La verificación local cubre **8 casos xUnit, 3 pruebas de navegador y 2 capacidades OpenSpec**. [GitHub Actions](.github/workflows/verificar.yml) repite la validación, la compilación y ambas suites con cada push o pull request.
+La verificación local cubre **8 casos xUnit, 4 pruebas HTTP, 3 pruebas de navegador y 3 capacidades OpenSpec**. [GitHub Actions](.github/workflows/verificar.yml) repite la validación, la compilación y ambas suites con cada push o pull request.
