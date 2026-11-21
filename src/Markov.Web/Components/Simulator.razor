@@ -1,0 +1,94 @@
+<header><div class="brand">◒ &nbsp; Laboratorio de Markov</div><h1>El clima, día a día.</h1>
+<p>Explora cómo las probabilidades de hoy cambian el clima esperado durante los próximos diez días.</p></header>
+<div class="layout">
+<section><h2>Modelo de transición</h2>
+<label for="initial">Estado inicial</label>
+<select id="initial" @bind="initial" @bind:after="Calculate">
+@for (int i = 0; i < Names.Length; i++){ <option value="@i">@Names[i]</option> }
+</select>
+<h3>Matriz de transición</h3><p>Cada fila representa hoy y cada columna, mañana. Introduce porcentajes que sumen 100 por fila.</p>
+<table class="matrix"><thead><tr><th>Hoy ↓</th>@foreach(var name in Names){<th scope="col">@name</th>}</tr></thead><tbody>
+@for(int row=0; row<3; row++)
+{
+    int r=row;
+    <tr><th scope="row">@Names[r]</th>
+    @for(int col=0; col<3; col++)
+    {
+        int c=col;
+        <td><input aria-label="@($"{Names[r]} a {Names[c]}")" inputmode="decimal" value="@cells[r,c]" @oninput="e => Edit(r,c,e.Value?.ToString())" /></td>
+    }
+    </tr>
+}
+</tbody></table>
+<button @onclick="Reset">Restaurar ejemplo</button>
+@if(error != null){<p class="error" role="alert">@error</p>}
+</section>
+<section><h2>Probabilidad por día</h2>
+@if(error == null)
+{
+    <div class="legend">@for(int i=0;i<3;i++){<span><i class="@($"tone-{i}")"></i>@Names[i]</span>}</div>
+    <div class="plot" role="img" aria-label="Probabilidades agrupadas por día, escala de 0 a 100 %. Valores en la tabla.">
+    <div class="axis"><span>100 %</span><span>50 %</span><span>0 %</span></div><div class="groups">
+    @foreach(var point in points)
+    {
+        <div class="group">@for(int i=0;i<3;i++){
+            var percent = point.Probabilities[i]*100;
+            <div class="@($"bar tone-{i}")" style="@($"height:{percent.ToString(CultureInfo.InvariantCulture)}%")" title="@($"{Names[i]} · {Pct(percent)}")"></div>
+        }<small>Día @point.Day</small></div>
+    }</div></div>
+    <table class="results"><caption>Distribución desde @Names[initial].ToLowerInvariant()</caption><thead><tr><th>Día</th>@foreach(var name in Names){<th>@name</th>}</tr></thead><tbody>
+    @foreach(var point in points){<tr><th scope="row">@point.Day</th>@foreach(var probability in point.Probabilities){<td>@Pct(probability*100)</td>}</tr>}
+    </tbody></table>
+}
+else { <p>Corrige la matriz para calcular las probabilidades.</p> }
+</section></div>
+<aside><h2>Cómo leer el modelo</h2><p><strong>vₙ = v₀ Pⁿ.</strong> Partimos del estado elegido y multiplicamos su vector por la matriz una vez por día. Con la matriz de ejemplo, si hoy llueve, mañana hay un 20 % de probabilidad de sol, un 30 % de nubes y un 50 % de lluvia. Los datos son didácticos.</p></aside>
+
+@code {
+    private static readonly string[] Names = ["Soleado", "Nublado", "Lluvioso"];
+    private static readonly CultureInfo Spanish = CultureInfo.GetCultureInfo("es-CO");
+    private readonly string[,] cells = new string[3,3];
+    private IReadOnlyList<Forecast> points = [];
+    private int initial;
+    private string? error;
+    protected override void OnInitialized() => Reset();
+
+    private static string Pct(decimal value) => value.ToString("F2", Spanish) + " %";
+    private void Reset()
+    {
+        var example = WeatherChain.Example();
+        for (int r = 0; r < 3; r++)
+            for (int c = 0; c < 3; c++)
+                cells[r,c] = example[r,c].ToString(Spanish);
+        initial = 2;
+        Calculate();
+    }
+
+    private void Edit(int row, int column, string? text)
+    {
+        cells[row,column] = text ?? "";
+        Calculate();
+    }
+
+    private void Calculate()
+    {
+        var matrix = new decimal[3,3];
+        points = [];
+        for (int r = 0; r < 3; r++)
+            for (int c = 0; c < 3; c++)
+                if (!decimal.TryParse(cells[r,c].Trim().Replace(',', '.'), NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out matrix[r,c]))
+                {
+                    error = $"Fila {r+1} ({Names[r]}): introduce un porcentaje en la columna {Names[c]}.";
+                    return;
+                }
+        try
+        {
+            points = WeatherChain.Predict(matrix, initial);
+            error = null;
+        }
+        catch (ArgumentException exception)
+        {
+            error = exception.Message;
+        }
+    }
+}

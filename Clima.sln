@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D5182F75
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Markov.Core.Tests", "tests\Markov.Core.Tests\Markov.Core.Tests.csproj", "{A33157DA-7A4B-4930-91E7-2A1AE99F50FA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Markov.Web", "src\Markov.Web\Markov.Web.csproj", "{18D14667-C8FC-4C9B-B656-64C9B802F774}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,9 +30,14 @@ Global
 		{A33157DA-7A4B-4930-91E7-2A1AE99F50FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A33157DA-7A4B-4930-91E7-2A1AE99F50FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A33157DA-7A4B-4930-91E7-2A1AE99F50FA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{18D14667-C8FC-4C9B-B656-64C9B802F774}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{18D14667-C8FC-4C9B-B656-64C9B802F774}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{18D14667-C8FC-4C9B-B656-64C9B802F774}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{18D14667-C8FC-4C9B-B656-64C9B802F774}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{26D48716-83B0-4660-B1FC-86C58C7A8576} = {6BA81557-8280-4147-A642-C42B248BDDEB}
 		{A33157DA-7A4B-4930-91E7-2A1AE99F50FA} = {D5182F75-414E-418F-87A2-A4BED084A429}
+		{18D14667-C8FC-4C9B-B656-64C9B802F774} = {6BA81557-8280-4147-A642-C42B248BDDEB}
 	EndGlobalSection
 EndGlobal
